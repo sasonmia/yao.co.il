@@ -158,7 +158,7 @@ function loginAs(n){
   const ex=Object.keys(DB.users).find(k=>k.toLowerCase()===n.toLowerCase());if(ex)n=ex;
   S={name:n,stars:(DB.users[n]&&DB.users[n].stars)||{}};save();home();
 }
-function logout(){S={name:'',stars:{}};DB.last='';saveDB();loginScreen()}
+function logout(){S={name:'',stars:{}};DB.last='';saveDB();home()}
 const award=(k,n)=>{S.stars[k]=Math.max(S.stars[k]||0,n);save()};
 const sum=pref=>Object.entries(S.stars).filter(([k])=>k.startsWith(pref)).reduce((a,[,v])=>a+v,0);
 
@@ -471,22 +471,16 @@ function privacy(){
     el('p',{},'האתר הוא כלי תרגול עצמאי ואינו אתר רשמי של משרד החינוך. הסרטונים בעמוד "סרטוני משרד החינוך" נפתחים באתר YouTube.')));
 }
 
-/* ---------- Login ---------- */
-function loginScreen(){
-  say('הי! שמי הוא יולי, אנחנו יחד כדי ללמוד אנגלית. מי משחק היום?',null,true);
-  const names=Object.keys(DB.users);
-  const inp=el('input',{class:'text',type:'text',maxlength:'20',placeholder:'שם משתמש',autocomplete:'off',style:'font-family:inherit'});
-  const form=el('form',{class:'nameform',onsubmit:e=>{e.preventDefault();loginAs(inp.value)}},inp,el('button',{class:'btn',type:'submit'},'כניסה'));
-  view(
-    el('div',{class:'lesson'},el('h3',{},'👋 כניסה'),el('p',{},'כתבו שם משתמש (שם פרטי או כינוי), ובפעם הבאה יולי יזהה אתכם.'),form),
-    names.length?el('div',{style:'margin-top:16px'},el('div',{class:'prog'},'מי כבר כאן? לחצו על השם שלכם'),el('div',{class:'grid'},names.map(n=>el('button',{class:'tile-btn',onclick:()=>loginAs(n)},el('span',{class:'ic'},'🙂'),el('div',{},n),el('div',{class:'st'},'⭐ '+Object.values(DB.users[n].stars||{}).reduce((a,b)=>a+b,0)))))):null,
-    el('div',{class:'note'},'אין סיסמה. מומלץ להשתמש בשם פרטי או בכינוי, בלי שם משפחה. השמות והכוכבים נשמרים רק במכשיר הזה.'));
-  setTimeout(()=>inp.focus(),50);
-}
-
 /* ---------- Home ---------- */
 function home(){
-  if(!S.name)return loginScreen();
+  if(!S.name){
+    say('הי! שמי הוא יולי, אנחנו יחד כדי ללמוד אנגלית. איך קוראים לך?',null,true);
+    const inp=el('input',{class:'text',type:'text',maxlength:'20',placeholder:'השם שלי…',autocomplete:'off',style:'font-family:inherit'});
+    view(el('div',{class:'lesson'},el('h3',{},'👋 איך קוראים לך?'),
+      el('form',{class:'nameform',onsubmit:e=>{e.preventDefault();loginAs(inp.value)}},inp,el('button',{class:'btn',type:'submit'},'כניסה'))));
+    setTimeout(()=>inp.focus(),50);
+    return;
+  }
   const total=sum('w')+sum('g')+sum('p');
   const name=S.name;
   say(name?`הי ${name}! שמי הוא יולי, אנחנו יחד כדי ללמוד אנגלית.`:'הי! שמי הוא יולי, אנחנו יחד כדי ללמוד אנגלית. איך קוראים לך?',null,true);
@@ -759,13 +753,7 @@ function videos(){
     el('div',{class:'note'},'טיפ להורים ולמורים: צפו בסרטון יחד, עצרו אחרי כל קטע, ובקשו מהילד לחזור בקול על המילים והמשפטים. אחר כך תרגלו את אותו נושא כאן עם Yuli.'));
 }
 
-/* Browsers block audio until the first click, so start with a gate button */
-function gate(){
-  const known=DB.last&&DB.users[DB.last];
-  $('#bubble').textContent=known?`הי ${DB.last}! לחצו כדי להתחיל`:'הי! לחצו כדי להתחיל';
-  view(el('div',{class:'row',style:'margin-top:30px'},el('button',{class:'btn sun',style:'font-size:26px;padding:18px 36px',onclick:()=>{known?loginAs(DB.last):loginScreen()}},'▶️ בואו נתחיל')));
-}
-gate();
+if(DB.last&&DB.users[DB.last])loginAs(DB.last);else home();
 </script>
 </body>
 </html>
