@@ -494,7 +494,7 @@ function home(){
   const nameForm=null;
   view(
     nameForm,
-    el('div',{class:'nav'},el('button',{class:'btn ghost',style:'padding:6px 12px',onclick:logout},'👤 '+name+' · החלפה'),el('span',{class:'pill'},'⭐ '+total),el('span',{class:'crumb'},'Yuli')),
+    el('div',{class:'nav'},el('button',{class:'btn ghost',style:'padding:6px 12px',onclick:logout},'👤 '+name+' · החלפה'),el('span',{class:'pill'},'⭐ '+total)),
     el('div',{class:'hero'},
       el('button',{class:'big-card',onclick:wordsMenu},el('span',{class:'ic'},'🔤'),el('span',{style:'flex:1'},el('b',{},'200 המילים הראשונות'),el('small',{},'Pre-A1 · 20 מקבצים × 10 מילים · 10 תחנות תרגול'),el('div',{class:'bar'},el('i',{style:`width:${wp}%`})))),
       el('button',{class:'big-card',onclick:grammarMenu},el('span',{class:'ic'},'🧩'),el('span',{style:'flex:1'},el('b',{},'דקדוק ראשון'),el('small',{},'A1 · TO BE, הווה פשוט, ציווי, and / but / or'),el('div',{class:'bar'},el('i',{style:`width:${gp}%`})))),
