@@ -476,8 +476,11 @@ function home(){
   if(!S.name){
     say('הי! שמי הוא יולי, אנחנו יחד כדי ללמוד אנגלית. איך קוראים לך?',null,true);
     const inp=el('input',{class:'text',type:'text',maxlength:'20',placeholder:'השם שלי…',autocomplete:'off',style:'font-family:inherit'});
+    const names=Object.keys(DB.users);
     view(el('div',{class:'lesson'},el('h3',{},'👋 איך קוראים לך?'),
-      el('form',{class:'nameform',onsubmit:e=>{e.preventDefault();loginAs(inp.value)}},inp,el('button',{class:'btn',type:'submit'},'כניסה'))));
+      el('form',{class:'nameform',onsubmit:e=>{e.preventDefault();loginAs(inp.value)}},inp,el('button',{class:'btn',type:'submit'},'כניסה'))),
+      names.length?el('div',{style:'margin-top:16px'},el('div',{class:'prog'},'מי כבר כאן? לחצו על השם שלכם'),el('div',{class:'grid'},names.map(n=>el('button',{class:'tile-btn',onclick:()=>loginAs(n)},el('span',{class:'ic'},'🙂'),el('div',{},n),el('div',{class:'st'},'⭐ '+Object.values(DB.users[n].stars||{}).reduce((a,b)=>a+b,0)))))):null,
+      el('div',{class:'note'},'אין סיסמה. מומלץ להשתמש בשם פרטי או בכינוי, בלי שם משפחה. השמות והכוכבים נשמרים רק במכשיר הזה.'));
     setTimeout(()=>inp.focus(),50);
     return;
   }
