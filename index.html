@@ -759,7 +759,13 @@ function videos(){
     el('div',{class:'note'},'טיפ להורים ולמורים: צפו בסרטון יחד, עצרו אחרי כל קטע, ובקשו מהילד לחזור בקול על המילים והמשפטים. אחר כך תרגלו את אותו נושא כאן עם Yuli.'));
 }
 
-if(DB.last&&DB.users[DB.last])loginAs(DB.last);else loginScreen();
+/* Browsers block audio until the first click, so start with a gate button */
+function gate(){
+  const known=DB.last&&DB.users[DB.last];
+  $('#bubble').textContent=known?`הי ${DB.last}! לחצו כדי להתחיל`:'הי! לחצו כדי להתחיל';
+  view(el('div',{class:'row',style:'margin-top:30px'},el('button',{class:'btn sun',style:'font-size:26px;padding:18px 36px',onclick:()=>{known?loginAs(DB.last):loginScreen()}},'▶️ בואו נתחיל')));
+}
+gate();
 </script>
 </body>
 </html>
