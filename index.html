@@ -158,8 +158,40 @@ function loginAs(n){
   const ex=Object.keys(DB.users).find(k=>k.toLowerCase()===n.toLowerCase());if(ex)n=ex;
   S={name:n,stars:(DB.users[n]&&DB.users[n].stars)||{}};save();home();
 }
-function logout(){S={name:'',stars:{}};DB.last='';saveDB();home()}
-const award=(k,n)=>{S.stars[k]=Math.max(S.stars[k]||0,n);save()};
+function logout(){setToken('');S={name:'',stars:{}};DB.last='';saveDB();home()}
+/* ---------- Optional server mode (AWS): enabled automatically when /api/health answers ---------- */
+let SERVER=false,TOKEN='',missBuf=[];
+try{TOKEN=localStorage.getItem('yuli_tok')||''}catch(e){}
+const setToken=t=>{TOKEN=t||'';try{t?localStorage.setItem('yuli_tok',t):localStorage.removeItem('yuli_tok')}catch(e){}};
+async function api(path,opts={}){
+  const r=await fetch('/api'+path,Object.assign({},opts,{headers:Object.assign({'Content-Type':'application/json'},TOKEN?{Authorization:'Bearer '+TOKEN}:{})}));
+  let j={};try{j=await r.json()}catch(e){}
+  if(!r.ok)throw Object.assign(new Error(j.error||'error'),{status:r.status,data:j});
+  return j;
+}
+async function detectServer(){
+  try{const c=new AbortController();setTimeout(()=>c.abort(),4000);
+    const r=await fetch('/api/health',{cache:'no-store',signal:c.signal});const j=await r.json();SERVER=!!(j&&j.ok)}catch(e){SERVER=false}
+}
+const award=(k,n)=>{
+  S.stars[k]=Math.max(S.stars[k]||0,n);save();
+  const miss=missBuf.splice(0);
+  if(SERVER&&TOKEN)api('/progress',{method:'PUT',body:JSON.stringify({key:k,stars:n,miss})}).catch(e=>{if(e.status===401)setToken('')});
+};
+async function serverLogin(name,pin,errBox){
+  name=(name||'').replace(/\s+/g,' ').trim();
+  try{
+    const r=await api('/login',{method:'POST',body:JSON.stringify({username:name,pin})});
+    setToken(r.token);S={name:r.name,stars:r.stars||{}};
+    const local=DB.users[r.name]||DB.users[name];            // upload progress made on this device before
+    if(local&&local.stars){const up={};for(const [k,v] of Object.entries(local.stars))if((S.stars[k]||0)<v){up[k]=v;S.stars[k]=v}
+      if(Object.keys(up).length)api('/progress',{method:'PUT',body:JSON.stringify({merge:up})}).catch(()=>{})}
+    save();home();
+  }catch(e){
+    const m={400:'שם משתמש: 2–20 תווים. קוד: 4 ספרות.',401:'השם או הקוד לא נכונים. נסו שוב.',429:'יותר מדי ניסיונות. נסו שוב בעוד כמה דקות.'}[e.status]||'אין חיבור לשרת. נסו שוב עוד רגע.';
+    errBox.textContent='🙂 '+m;
+  }
+}
 const sum=pref=>Object.entries(S.stars).filter(([k])=>k.startsWith(pref)).reduce((a,[,v])=>a+v,0);
 
 /* ---------- speech: tts + dictation ---------- */
@@ -282,7 +314,7 @@ function runQuiz(c,qs,done){
       const b=el('button',{class:'opt'+(q.emoji?' emoji':''),dir:'ltr',type:'button',onclick:()=>{
         if(locked)return;
         if(k===q.a){locked=true;b.classList.add('ok');if(first)good++;fb.textContent='✅ Great!';if(q.say)speak(q.say);setTimeout(()=>{i++;show()},900)}
-        else{first=false;b.classList.remove('bad');void b.offsetWidth;b.classList.add('bad');fb.textContent='🙂 לא נורא, נסו שוב'}
+        else{if(first){const w=String(q.say||q.listen||'');if(w&&w.length<=40)missBuf.push(w)}first=false;b.classList.remove('bad');void b.offsetWidth;b.classList.add('bad');fb.textContent='🙂 לא נורא, נסו שוב'}
       }},o);
       opts.append(b);
     });
@@ -466,13 +498,26 @@ function finishScreen(c,key,st,ctrl){
 function privacy(){
   say('כמה מילים על פרטיות');
   view(navBar('פרטיות',home),el('div',{class:'lesson'},el('h3',{},'פרטיות'),
-    el('p',{},'האתר לא אוסף, לא שולח ולא שומר מידע על ילדים בשרת. שם המשתמש והכוכבים נשמרים רק בדפדפן של המכשיר הזה, וניתן למחוק אותם בניקוי נתוני האתר בדפדפן.'),
+    el('p',{},SERVER?'האתר שומר בשרת (בענן, באזור ישראל) את שם המשתמש, קוד כניסה מוצפן (לא ניתן לראות אותו) ואת ההתקדמות בתרגול: אילו תחנות הושלמו, כוכבים, תאריכים ומילים שטעו בהן. לא נשמרים הקלטות קול, כתובות מייל או שם משפחה. בקשת מחיקה של משתמש תטופל על ידי מפעיל האתר.':'האתר לא אוסף, לא שולח ולא שומר מידע על ילדים בשרת. שם המשתמש והכוכבים נשמרים רק בדפדפן של המכשיר הזה, וניתן למחוק אותם בניקוי נתוני האתר בדפדפן.'),
     el('p',{},'כשלוחצים על 🎤, הדפדפן מבקש רשות להשתמש במיקרופון. בדפדפנים מסוימים (למשל Chrome) הקול מועבר לשירות זיהוי הדיבור של חברת הדפדפן לצורך תמלול. מומלץ שהורה יאשר שימוש במיקרופון. אפשר להשתמש באתר גם בלי מיקרופון, בהקלדה.'),
     el('p',{},'האתר הוא כלי תרגול עצמאי ואינו אתר רשמי של משרד החינוך. הסרטונים בעמוד "סרטוני משרד החינוך" נפתחים באתר YouTube.')));
 }
 
 /* ---------- Home ---------- */
 function home(){
+  if(!S.name&&SERVER){
+    say('הי! שמי הוא יולי, אנחנו יחד כדי ללמוד אנגלית. איך קוראים לך?',null,true);
+    const un=el('input',{class:'text',type:'text',maxlength:'20',placeholder:'שם משתמש',autocomplete:'username',style:'font-family:inherit'});
+    const pin=el('input',{class:'text',type:'password',inputmode:'numeric',pattern:'[0-9]*',maxlength:'4',placeholder:'קוד בן 4 ספרות',autocomplete:'current-password',style:'font-family:inherit;margin-top:10px'});
+    const err=el('div',{class:'fb'});
+    const names=Object.keys(DB.users);
+    view(el('div',{class:'lesson'},el('h3',{},'👋 כניסה'),el('p',{},'משתמש חדש? בחרו שם וקוד בן 4 ספרות, והוא יישמר. בפעם הבאה מכניסים את אותם שם וקוד.'),
+      el('form',{onsubmit:e=>{e.preventDefault();err.textContent='';serverLogin(un.value,pin.value,err)}},un,pin,el('div',{class:'row'},el('button',{class:'btn',type:'submit'},'כניסה')),err)),
+      names.length?el('div',{style:'margin-top:16px'},el('div',{class:'prog'},'שמות שהיו כאן במכשיר הזה'),el('div',{class:'grid'},names.map(n=>el('button',{class:'tile-btn',type:'button',onclick:()=>{un.value=n;pin.focus()}},el('span',{class:'ic'},'🙂'),el('div',{},n))))):null,
+      el('div',{class:'note'},'מומלץ שם פרטי או כינוי, בלי שם משפחה. את הקוד כדאי לזכור או לרשום. ההתקדמות נשמרת בשרת באזור ישראל.'));
+    setTimeout(()=>un.focus(),50);
+    return;
+  }
   if(!S.name){
     say('הי! שמי הוא יולי, אנחנו יחד כדי ללמוד אנגלית. איך קוראים לך?',null,true);
     const inp=el('input',{class:'text',type:'text',maxlength:'20',placeholder:'השם שלי…',autocomplete:'off',style:'font-family:inherit'});
@@ -756,7 +801,14 @@ function videos(){
     el('div',{class:'note'},'טיפ להורים ולמורים: צפו בסרטון יחד, עצרו אחרי כל קטע, ובקשו מהילד לחזור בקול על המילים והמשפטים. אחר כך תרגלו את אותו נושא כאן עם Yuli.'));
 }
 
-if(DB.last&&DB.users[DB.last])loginAs(DB.last);else home();
+(async()=>{
+  await detectServer();
+  if(SERVER){
+    if(TOKEN){try{const r=await api('/me');S={name:r.name,stars:r.stars||{}};save();return home()}catch(e){if(e.status===401)setToken('')}}
+    return home();
+  }
+  if(DB.last&&DB.users[DB.last])loginAs(DB.last);else home();
+})();
 </script>
 </body>
 </html>
