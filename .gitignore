@@ -1,3 +1,4 @@
 .yuli-secret
 .aws-sam/
 node_modules/
+.yuli-admin-key

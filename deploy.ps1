@@ -17,19 +17,28 @@ if (-not (Test-Path .yuli-secret)) {
   [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b)
   ($b | ForEach-Object { $_.ToString('x2') }) -join '' | Set-Content -NoNewline .yuli-secret
 }
+if (-not (Test-Path .yuli-admin-key)) {
+  $b2 = New-Object byte[] 24
+  [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b2)
+  ($b2 | ForEach-Object { $_.ToString('x2') }) -join '' | Set-Content -NoNewline .yuli-admin-key
+}
 $secret = (Get-Content .yuli-secret -Raw).Trim()
+$adminKey = (Get-Content .yuli-admin-key -Raw).Trim()
 
 Run "sam build --template-file infra/template.yaml"
 Run ("sam deploy --template-file .aws-sam/build/template.yaml --stack-name $Stack --region $Region " +
      "--capabilities CAPABILITY_IAM --resolve-s3 --no-confirm-changeset --no-fail-on-empty-changeset " +
-     "--parameter-overrides TokenSecret=$secret DomainName=$($env:DOMAIN) CertificateArn=$($env:CERT_ARN) AlertEmail=$($env:ALERT_EMAIL)")
+     "--parameter-overrides TokenSecret=$secret AdminKey=$adminKey DomainName=$($env:DOMAIN) CertificateArn=$($env:CERT_ARN) AlertEmail=$($env:ALERT_EMAIL)")
 
 function Out($k) { (aws cloudformation describe-stacks --stack-name $Stack --region $Region --query "Stacks[0].Outputs[?OutputKey=='$k'].OutputValue" --output text).Trim() }
 $bucket = Out 'BucketName'; $dist = Out 'DistributionId'
 
 Run "aws s3 cp index.html s3://$bucket/index.html --region $Region --content-type `"text/html; charset=utf-8`" --cache-control no-cache"
+Run "aws s3 cp admin.html s3://$bucket/admin.html --region $Region --content-type `"text/html; charset=utf-8`" --cache-control no-cache"
 Run "aws cloudfront create-invalidation --distribution-id $dist --paths `"/*`" | Out-Null"
 
 Write-Host ""
 Write-Host "Site:  $(Out 'SiteUrl')"
+Write-Host "Admin page: $(Out 'SiteUrl')/admin.html   (admin key is in .yuli-admin-key)"
+Write-Host "NOTE: open the SES verification email sent to your Gmail and click the link (needed once, to send approval emails)."
 Write-Host "CNAME for DNS -> $(Out 'CloudFrontDomain')"

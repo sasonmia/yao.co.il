@@ -8,6 +8,15 @@ Parameters:
     NoEcho: true
     MinLength: 32
     Description: Secret used to sign login tokens (deploy.sh generates it).
+  AdminKey:
+    Type: String
+    NoEcho: true
+    MinLength: 16
+    Description: Secret key for the admin page (deploy script generates it).
+  AdminEmail:
+    Type: String
+    Default: sasonmia@gmail.com
+    Description: Receives new-account approval requests. Also used as the verified SES sender.
   DomainName:
     Type: String
     Default: ''
@@ -65,9 +74,16 @@ Resources:
         Variables:
           TABLE: !Ref Table
           TOKEN_SECRET: !Ref TokenSecret
+          ADMIN_KEY: !Ref AdminKey
+          ADMIN_EMAIL: !Ref AdminEmail
+          MAIL_FROM: !Ref AdminEmail
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref Table
+        - Statement:
+            - Effect: Allow
+              Action: ses:SendEmail
+              Resource: '*'
       Events:
         Health:
           Type: HttpApi
@@ -81,6 +97,27 @@ Resources:
         Progress:
           Type: HttpApi
           Properties: { ApiId: !Ref HttpApi, Path: /api/progress, Method: PUT }
+        Register:
+          Type: HttpApi
+          Properties: { ApiId: !Ref HttpApi, Path: /api/register, Method: POST }
+        DecideGet:
+          Type: HttpApi
+          Properties: { ApiId: !Ref HttpApi, Path: /api/admin/decide, Method: GET }
+        DecidePost:
+          Type: HttpApi
+          Properties: { ApiId: !Ref HttpApi, Path: /api/admin/decide, Method: POST }
+        AdminUsers:
+          Type: HttpApi
+          Properties: { ApiId: !Ref HttpApi, Path: /api/admin/users, Method: GET }
+        AdminUser:
+          Type: HttpApi
+          Properties: { ApiId: !Ref HttpApi, Path: /api/admin/user, Method: PUT }
+
+  # Sender identity for approval emails. AWS sends a verification mail to AdminEmail - click the link once.
+  MailIdentity:
+    Type: AWS::SES::EmailIdentity
+    Properties:
+      EmailIdentity: !Ref AdminEmail
 
   SiteBucket:
     Type: AWS::S3::Bucket
