@@ -2,14 +2,18 @@
 
 ארכיטקטורה: CloudFront (CDN) ← S3 (האתר) + API Gateway ← Lambda ← DynamoDB. הכול בישראל חוץ מה-CDN וה-certificate (ראו הערה).
 
+## שלב 0: הפעלת אזור תל אביב בחשבון (חד-פעמי)
+האזור il-central-1 כבוי כברירת מחדל. להפעיל אותו: בקונסולה → שם החשבון (למעלה מימין) → **Account** → **AWS Regions** → "Israel (Tel Aviv)" → **Enable**. ההפעלה לוקחת מספר דקות ועד כמה שעות, ובסיום הסטטוס הופך ל-Enabled.
+או בשורת פקודה: `aws account enable-region --region-name il-central-1 --profile yuli`
+(`aws login` אפשר לבצע עם eu-north-1, הפריסה עצמה רצה בתל אביב.)
+
 ## דרישות
 - חשבון AWS, AWS CLI v2 ו-SAM CLI מותקנים; `aws configure` עם משתמש IAM עם הרשאות לפריסה.
 - אזור: il-central-1 (נבחר אוטומטית ב-deploy.sh). אם האזור לא מופעל בחשבון – להפעיל אותו (Opt-in) בהגדרות Account → AWS Regions.
 
 ## פריסה ראשונה (בלי דומיין)
-```
-./deploy.sh
-```
+ב-Windows (PowerShell): `$env:AWS_PROFILE="yuli"; .\deploy.ps1`
+ב-Mac/Linux/Git Bash: `./deploy.sh`
 בסוף מודפסת כתובת `https://xxxx.cloudfront.net` – האתר כבר עובד שם, כולל שמירת משתמשים והתקדמות.
 
 ## חיבור הדומיין yao.co.il
